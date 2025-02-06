@@ -13,6 +13,35 @@
             font-family: 'Rubik', sans-serif;
             font-size: 14px;
         }
+
+        .chat-message {
+            margin-bottom: 10px;
+        }
+
+        .chat-message.agent {
+            text-align: left;
+        }
+
+        .chat-message.user {
+            text-align: right;
+        }
+
+        .chat-message p {
+            background-color: #f1f1f1;
+            padding: 8px;
+            border-radius: 5px;
+            display: inline-block;
+            max-width: 80%;
+        }
+
+        .chat-message.agent p {
+            background-color: #e1e1e1;
+        }
+
+        .chat-message.user p {
+            background-color: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -33,7 +62,18 @@
 </nav>
 <main class="container">
     <h1 class="my-4">Детали серверов</h1>
-    <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addServerModal">Добавить сервер</button>
+    <div class="mb-3">
+        <label for="statusFilter" class="form-label">Фильтр по статусу</label>
+        <select class="form-control" id="statusFilter" onchange="filterServers()">
+            <option value="">Все</option>
+            <option value="В порядке">В порядке</option>
+            <option value="Ошибка">Ошибка</option>
+            <option value="Недоступен">Недоступен</option>
+        </select>
+    </div>
+    <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addServerModal">Добавить сервер
+    </button>
+
     <table class="table table-striped table-bordered">
         <thead class="table-light">
         <tr>
@@ -99,29 +139,100 @@
         </div>
     </div>
 </div>
+<!-- Live Chat Widget -->
+<div id="chatWidget" class="position-fixed bottom-0 end-0 p-3">
+    <!-- Chat Toggle Button -->
+    <button class="btn btn-primary rounded-circle" onclick="toggleChatWindow()" data-bs-toggle="tooltip"
+            title="Чат с поддержкой">
+        <i class="bi bi-chat-square-text"></i>
+    </button>
+
+    <!-- Chat Window -->
+    <div id="chatWindow" class="card" style="width: 300px; display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Поддержка</span>
+            <button class="btn-close" onclick="toggleChatWindow()"></button>
+        </div>
+        <div id="chatMessages" class="card-body" style="height: 200px; overflow-y: scroll;">
+            <!-- Messages will appear here -->
+        </div>
+        <div class="card-footer">
+            <div class="input-group">
+                <input type="text" id="chatInput" class="form-control" placeholder="Напишите сообщение..."
+                       onclick="sendMessage()">
+                <button class="btn btn-primary" onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
+    // Function to toggle the chat window
+    function toggleChatWindow() {
+        const chatWindow = document.getElementById("chatWindow");
+        chatWindow.style.display = chatWindow.style.display === "none" ? "block" : "none";
+    }
+
+    // Function to send a message
+    function sendMessage() {
+        const input = document.getElementById("chatInput");
+        if (input.value.trim() === "") return;
+
+        const message = input.value;
+        const chatMessages = document.getElementById("chatMessages");
+
+        // Display user message
+        const userMessage = document.createElement("div");
+        userMessage.classList.add("chat-message", "user");
+        userMessage.innerHTML = `<p>${message}</p>`;
+        chatMessages.appendChild(userMessage);
+
+        // Simulate agent response after a delay
+        setTimeout(() => {
+            const agentMessage = document.createElement("div");
+            agentMessage.classList.add("chat-message", "agent");
+            agentMessage.innerHTML = `<p>Здравствуйте! Как я могу помочь?</p>`;
+            chatMessages.appendChild(agentMessage);
+
+            // Scroll to the bottom of the chat window
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 1000);
+
+        // Clear input
+        input.value = "";
+        input.focus();
+
+        // Scroll to the bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     let servers = [
-        { name: "Alpha Server", ip: "10.0.0.1", status: "В порядке", icon: "bi-check-lg text-success" },
-        { name: "Beta Node", ip: "10.0.0.2", status: "Ошибка", icon: "bi-exclamation-triangle-fill text-warning" },
-        { name: "Gamma Host", ip: "10.0.0.3", status: "Недоступен", icon: "bi-x-lg text-danger" },
-        { name: "Delta Core", ip: "10.0.1.1", status: "В порядке", icon: "bi-check-lg text-success" },
-        { name: "Epsilon Gateway", ip: "10.0.1.2", status: "Ошибка", icon: "bi-exclamation-triangle-fill text-warning" },
-        { name: "Zeta Proxy", ip: "10.0.2.1", status: "Недоступен", icon: "bi-x-lg text-danger" }
+        {name: "Alpha Server", ip: "10.0.0.1", status: "В порядке", icon: "bi-check-lg text-success"},
+        {name: "Beta Node", ip: "10.0.0.2", status: "Ошибка", icon: "bi-exclamation-triangle-fill text-warning"},
+        {name: "Gamma Host", ip: "10.0.0.3", status: "Недоступен", icon: "bi-x-lg text-danger"},
+        {name: "Delta Core", ip: "10.0.1.1", status: "В порядке", icon: "bi-check-lg text-success"},
+        {name: "Epsilon Gateway", ip: "10.0.1.2", status: "Ошибка", icon: "bi-exclamation-triangle-fill text-warning"},
+        {name: "Zeta Proxy", ip: "10.0.2.1", status: "Недоступен", icon: "bi-x-lg text-danger"}
     ];
     let currentPage = 0;
     const itemsPerPage = 5;
+    let filteredServers = servers;  // Default to all servers
 
-    // Объект для отображения иконки в зависимости от статуса
-    const statusIcons = {
-        "В порядке": "bi-check-lg text-success",
-        "Ошибка": "bi-exclamation-triangle-fill text-warning",
-        "Недоступен": "bi-x-lg text-danger"
-    };
+    // Function to filter servers based on selected status
+    function filterServers() {
+        const statusFilterValue = document.getElementById("statusFilter").value;
+        currentPage = 0; // Reset to the first page when filter changes
+        filteredServers = statusFilterValue
+            ? servers.filter(server => server.status === statusFilterValue)
+            : servers;
+        renderTable();  // Re-render the table with the filtered servers
+    }
 
+    // Function to render the server table with pagination
     function renderTable() {
         const start = currentPage * itemsPerPage;
         const end = start + itemsPerPage;
-        const pageServers = servers.slice(start, end);
+        const pageServers = filteredServers.slice(start, end);
+
         const tableBody = document.getElementById("serverTableBody");
         tableBody.innerHTML = "";
 
@@ -137,9 +248,10 @@
         });
 
         document.getElementById("prevPage").disabled = currentPage === 0;
-        document.getElementById("nextPage").disabled = end >= servers.length;
+        document.getElementById("nextPage").disabled = end >= filteredServers.length;
     }
 
+    // Pagination buttons
     document.getElementById("prevPage").addEventListener("click", () => {
         if (currentPage > 0) {
             currentPage--;
@@ -148,12 +260,13 @@
     });
 
     document.getElementById("nextPage").addEventListener("click", () => {
-        if ((currentPage + 1) * itemsPerPage < servers.length) {
+        if ((currentPage + 1) * itemsPerPage < filteredServers.length) {
             currentPage++;
             renderTable();
         }
     });
 
+    // Function to show server details in a modal
     function showServerDetails(name, ip, status) {
         document.getElementById('serverName').textContent = name;
         document.getElementById('serverIP').textContent = ip;
@@ -162,20 +275,22 @@
         myModal.show();
     }
 
+    // Function to add a new server
     function addServer() {
         const name = document.getElementById("serverNameInput").value;
         const ip = document.getElementById("serverIPInput").value;
         const status = document.getElementById("serverStatusInput").value;
-        const icon = statusIcons[status]; // Получаем соответствующую иконку для выбранного статуса
+        const icon = status === "В порядке" ? "bi-check-lg text-success" : status === "Ошибка" ? "bi-exclamation-triangle-fill text-warning" : "bi-x-lg text-danger";
 
-        servers.push({ name, ip, status, icon });
-        renderTable();
+        servers.push({name, ip, status, icon});
+        filterServers(); // Re-render table with the current filter
         document.getElementById("addServerForm").reset();
         bootstrap.Modal.getInstance(document.getElementById('addServerModal')).hide();
     }
 
-    renderTable();
+    renderTable();  // Initial render of the table
 </script>
+
 
 </body>
 </html>
